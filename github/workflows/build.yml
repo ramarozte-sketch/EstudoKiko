@@ -1,0 +1,65 @@
+name: Compilar APK - Estudo com o Kiko
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      # Descomprime o EstudoKiko.zip enviado para o repositório (não é preciso descomprimir à mão)
+      - name: Descomprimir EstudoKiko.zip
+        run: |
+          ZIP=$(find . -maxdepth 2 -iname 'EstudoKiko*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then echo "Não encontrei o EstudoKiko.zip no repositório"; exit 1; fi
+          echo "A usar: $ZIP"
+          rm -rf projeto && mkdir projeto
+          unzip -q -o "$ZIP" -d projeto
+          # se o zip tiver uma pasta lá dentro, entra nela
+          DIR=$(dirname "$(find projeto -name settings.gradle.kts | head -n 1)")
+          echo "Projeto em: $DIR"
+          echo "PROJ=$DIR" >> $GITHUB_ENV
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Compilar APK
+        run: cd "$PROJ" && gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Mudar nome do APK
+        run: |
+          mkdir -p saida
+          cp "$PROJ"/app/build/outputs/apk/release/*.apk saida/EstudoKiko.apk
+          ls -la saida
+
+      - name: Guardar APK (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: EstudoKiko-apk
+          path: saida/EstudoKiko.apk
+
+      - name: Publicar na página de Releases (link direto para o telemóvel)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: kiko-v${{ github.run_number }}
+          name: Estudo com o Kiko v${{ github.run_number }}
+          files: saida/EstudoKiko.apk
