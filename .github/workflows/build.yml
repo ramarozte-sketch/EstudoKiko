@@ -28,6 +28,19 @@ jobs:
           echo "Projeto em: $DIR"
           echo "PROJ=$DIR" >> $GITHUB_ENV
 
+      # Mete a chave da IA (segredo CLAUDE_KEY) dentro da app, sem a guardar no repositório
+      - name: Chave da IA
+        env:
+          CLAUDE_KEY: ${{ secrets.CLAUDE_KEY }}
+        run: |
+          F="$PROJ/app/src/main/assets/www/js/chave.js"
+          if [ -n "$CLAUDE_KEY" ]; then
+            printf 'window.KIKO_IA_PADRAO = { fornecedor: "claude", chave: "%s", modelo: "claude-haiku-5-5" };\n' "$CLAUDE_KEY" > "$F"
+            echo "Chave da IA incluída."
+          else
+            echo "Sem segredo CLAUDE_KEY: a app compila sem IA incluída."
+          fi
+
       - name: Java 17
         uses: actions/setup-java@v4
         with:
